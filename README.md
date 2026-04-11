@@ -5,6 +5,7 @@ A local co-op 2D platformer built with Godot 4.5.
 In this project, two players must move through platforming levels together, collect fruit, avoid hazards, and reach the flag to advance. The game uses a shared co-op camera and a tether system so both players stay close and progress as a team.
 
 ## Overview
+<img width="961" height="535" alt="image" src="https://github.com/user-attachments/assets/6cdee6a2-2f08-4f20-8bdf-3e8417e56793" />
 
 ## Features
 
