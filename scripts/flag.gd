@@ -19,6 +19,10 @@ func _ready() -> void:
 	_players_in_flag.clear()
 	_changing_scene = false
 
+
+func _process(delta: float) -> void:
+	_update_and_maybe_change_scene()
+
 func _get_player_from_trigger(trigger: Node) -> Node:
 	if trigger == null:
 		return null
@@ -31,10 +35,14 @@ func _update_and_maybe_change_scene() -> void:
 	if _changing_scene:
 		return
 
-	if required_players <= 0:
+	var alive_finishers := Global.get_required_finishers()
+	var current_required_players := required_players
+	if alive_finishers > 0:
+		current_required_players = min(required_players, alive_finishers)
+	if current_required_players <= 0:
 		return
 
-	if _players_in_flag.size() < required_players:
+	if _players_in_flag.size() < current_required_players:
 		return
 
 	if next_level_path.is_empty():
@@ -49,6 +57,7 @@ func _on_area_entered(area: Area2D) -> void:
 	var player := _get_player_from_trigger(area)
 	if player != null and player.is_in_group("Player"):
 		_players_in_flag[player] = true
+		player.remove_from_group("Player")
 		player.queue_free()
 		_update_and_maybe_change_scene()
 
@@ -60,6 +69,7 @@ func _on_body_entered(body: Node2D) -> void:
 	var player := _get_player_from_trigger(body)
 	if player != null and player.is_in_group("Player"):
 		_players_in_flag[player] = true
+		player.remove_from_group("Player")
 		player.queue_free()
 		_update_and_maybe_change_scene()
 

@@ -74,6 +74,8 @@ func die():
 	if is_alive:
 	
 		is_alive = false
+		remove_from_group("Player")
+		Global.register_player_death(name)
 		anim.play("Hit")
 		
 		$CollisionShape2D.queue_free()
@@ -83,8 +85,9 @@ func die():
 		
 		await  get_tree().create_timer(1).timeout
 		
-		Global.score_pleyer1 = 0
-		Global.score_pleyer2 = 0
-		get_tree().change_scene_to_file("res://scenes/level_1.tscn")
+		if Global.should_reload_level_after_death():
+			Global.reload_current_level()
+		else:
+			queue_free()
 	
 	pass

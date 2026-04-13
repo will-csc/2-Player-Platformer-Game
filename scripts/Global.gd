@@ -2,12 +2,18 @@ extends Node
 
 var score_pleyer1 = 0
 var score_pleyer2 = 0
+var level_start_score_player1 = 0
+var level_start_score_player2 = 0
+var players_started_level = 0
+var players_dead_in_level = 0
 
 var coop_camera_enabled = true
 var coop_max_separation_x = 380.0
 
 var _coop_camera: Camera2D
 var _last_scene: Node
+var _tracked_scene: Node
+var _current_level_path := ""
 var _resetting_game := false
 
 
@@ -20,7 +26,7 @@ func _physics_process(delta: float) -> void:
 	if scene == null:
 		return
 
-	_maybe_restart_game_on_level_3_death_line(scene)
+	_track_level_state(scene)
 
 	if not coop_camera_enabled:
 		return
@@ -29,8 +35,15 @@ func _physics_process(delta: float) -> void:
 		_last_scene = scene
 		_configure_coop_camera()
 
+	if _coop_camera == null or not is_instance_valid(_coop_camera):
+		_configure_coop_camera()
+
 	var players := _get_players()
-	if players.size() < 2:
+	if players.is_empty():
+		return
+
+	if players.size() == 1:
+		_update_single_player_camera(players[0])
 		return
 
 	var p1 := players[0]
@@ -40,21 +53,17 @@ func _physics_process(delta: float) -> void:
 	_apply_tether_x(p1, p2)
 
 
-func _maybe_restart_game_on_level_3_death_line(scene: Node) -> void:
-	if _resetting_game:
+func _track_level_state(scene: Node) -> void:
+	if scene == _tracked_scene:
 		return
 
-	if scene.scene_file_path != "res://scenes/level_3.tscn":
-		return
-
-	var death_line := scene.get_node_or_null("DeathLine")
-	if not (death_line is Node2D):
-		return
-
-	for p in _get_players():
-		if p.global_position.y > death_line.global_position.y:
-			restart_game_to_level_1()
-			return
+	_tracked_scene = scene
+	_current_level_path = scene.scene_file_path
+	level_start_score_player1 = score_pleyer1
+	level_start_score_player2 = score_pleyer2
+	players_started_level = _get_players().size()
+	players_dead_in_level = 0
+	_resetting_game = false
 
 
 func restart_game_to_level_1() -> void:
@@ -65,6 +74,37 @@ func restart_game_to_level_1() -> void:
 	score_pleyer1 = 0
 	score_pleyer2 = 0
 	get_tree().call_deferred("change_scene_to_file", "res://scenes/level_1.tscn")
+
+
+func restore_player_score(player_name: String) -> void:
+	if player_name == "Player2":
+		score_pleyer2 = level_start_score_player2
+	else:
+		score_pleyer1 = level_start_score_player1
+
+
+func register_player_death(player_name: String) -> void:
+	restore_player_score(player_name)
+	if players_started_level <= 0:
+		return
+
+	players_dead_in_level = min(players_dead_in_level + 1, players_started_level)
+
+
+func should_reload_level_after_death() -> bool:
+	return players_started_level > 0 and players_dead_in_level >= players_started_level
+
+
+func reload_current_level() -> void:
+	if _resetting_game or _current_level_path.is_empty():
+		return
+
+	_resetting_game = true
+	get_tree().call_deferred("change_scene_to_file", _current_level_path)
+
+
+func get_required_finishers() -> int:
+	return max(players_started_level - players_dead_in_level, 0)
 
 
 func _get_players() -> Array[Node2D]:
@@ -105,6 +145,13 @@ func _update_coop_camera(p1: Node2D, p2: Node2D) -> void:
 
 	var midpoint := (p1.global_position + p2.global_position) * 0.5
 	_coop_camera.global_position = midpoint
+
+
+func _update_single_player_camera(player: Node2D) -> void:
+	if _coop_camera == null:
+		return
+
+	_coop_camera.global_position = player.global_position
 
 
 func _apply_tether_x(p1: Node2D, p2: Node2D) -> void:
